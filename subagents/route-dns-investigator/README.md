@@ -29,8 +29,8 @@ Important behavior:
 
 Recommended runtime values:
 
-- ACCOUNT_SUBDOMAIN = jaredtechfit
-- DEFAULT_ZONE_NAME = agentfeedoptimization.com
-- DEFAULT_SCAN_ALL_ZONES = true
+ACCOUNT_SUBDOMAIN = jaredtechfit
+DEFAULT_ZONE_NAME = agentfeedoptimization.com
+DEFAULT_SCAN_ALL_ZONES = true
 
-The Cloudflare credential attached to the Worker must have read access for zones, DNS records, Worker routes, Worker custom domains, and Worker script/subdomain metadata. No mutation tools are implemented.
+The credential attached to the Worker must have read access for zones, DNS records, Worker routes, Worker custom domains, and Worker script/subdomain metadata. No mutation tools are implemented.
