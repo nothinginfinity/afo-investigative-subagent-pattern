@@ -1,4 +1,4 @@
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 const WORKER = 'afo-mcp-tool-auditor';
 const MODEL_DEFAULT = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
@@ -83,11 +83,49 @@ function toolsUrlFromEndpoint(endpoint) {
   return u.toString();
 }
 
-async function fetchMcpTools(args) {
+function internalTargets() {
+  return {
+    'repo-investigator': { binding: 'REPO_INVESTIGATOR', worker: 'afo-repo-investigator-mcp' },
+    repo_investigator: { binding: 'REPO_INVESTIGATOR', worker: 'afo-repo-investigator-mcp' },
+    REPO_INVESTIGATOR: { binding: 'REPO_INVESTIGATOR', worker: 'afo-repo-investigator-mcp' },
+    'worker-investigator': { binding: 'WORKER_INVESTIGATOR', worker: 'afo-worker-investigator-mcp' },
+    worker_investigator: { binding: 'WORKER_INVESTIGATOR', worker: 'afo-worker-investigator-mcp' },
+    WORKER_INVESTIGATOR: { binding: 'WORKER_INVESTIGATOR', worker: 'afo-worker-investigator-mcp' },
+    'd1-investigator': { binding: 'D1_INVESTIGATOR', worker: 'afo-d1-investigator-mcp' },
+    d1_investigator: { binding: 'D1_INVESTIGATOR', worker: 'afo-d1-investigator-mcp' },
+    D1_INVESTIGATOR: { binding: 'D1_INVESTIGATOR', worker: 'afo-d1-investigator-mcp' }
+  };
+}
+
+function resolveInternalTarget(args) {
+  const raw = clean(args.target_worker || args.binding_name || args.target);
+  if (!raw) return null;
+  const targets = internalTargets();
+  const normalized = raw.toLowerCase().replace(/\s+/g, '-');
+  return targets[raw] || targets[normalized] || targets[normalized.replace(/-/g, '_')] || null;
+}
+
+async function fetchInternalTools(env, target, track) {
+  const service = env[target.binding];
+  if (!service || typeof service.fetch !== 'function') return { ok: false, error: 'service binding is not configured: ' + target.binding, binding_name: target.binding, target_worker: target.worker };
+  track.start('service_binding_tools');
+  const res = await service.fetch(new Request('https://afo-internal.local/tools', { method: 'GET', headers: { accept: 'application/json' } }));
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  if (!res.ok) return { ok: false, error: 'service binding returned HTTP ' + res.status + ': ' + text.slice(0, 240), binding_name: target.binding, target_worker: target.worker };
+  const tools = arr(data.tools || data.result && data.result.tools);
+  return { ok: true, endpoint_url: 'service-binding://' + target.binding + '/tools', host: target.worker, source: 'cloudflare_service_binding_tools', target_worker: target.worker, binding_name: target.binding, count: tools.length, tools, timings: track.finish() };
+}
+
+async function fetchMcpTools(env, args) {
+  const internalTarget = resolveInternalTarget(args || {});
+  const track = stageTracker();
+  if (internalTarget) return fetchInternalTools(env, internalTarget, track);
+
   const endpoint = clean(args.endpoint_url || args.url);
   const safe = isSafeEndpoint(endpoint);
   if (!safe.ok) return { ok: false, ...safe };
-  const track = stageTracker();
   let init = null;
   let listed = null;
   let source = 'mcp_tools_list';
@@ -183,10 +221,10 @@ async function auditToolList(env, args) {
 }
 
 async function auditMcpEndpoint(env, args) {
-  const fetched = await fetchMcpTools(args);
+  const fetched = await fetchMcpTools(env, args || {});
   if (!fetched.ok) return fetched;
   const audits = fetched.tools.map(auditOneTool);
-  return { ok: true, endpoint_url: fetched.endpoint_url, host: fetched.host, tool_count: fetched.count, summary: summarizeAudits(audits), audits, timings: fetched.timings };
+  return { ok: true, endpoint_url: fetched.endpoint_url, host: fetched.host, source: fetched.source, target_worker: fetched.target_worker || null, binding_name: fetched.binding_name || null, tool_count: fetched.count, summary: summarizeAudits(audits), audits, timings: fetched.timings };
 }
 
 async function runModel(env, evidence, question) {
@@ -202,7 +240,7 @@ async function investigateMcpTool(env, args) {
   const question = clean(args.question || 'Audit this MCP tool surface for agent usability and safety.');
   let evidence;
   track.start('collect');
-  if (args.endpoint_url || args.url) evidence = await auditMcpEndpoint(env, args);
+  if (args.endpoint_url || args.url || args.target_worker || args.binding_name || args.target) evidence = await auditMcpEndpoint(env, args);
   else evidence = await auditToolList(env, args);
   if (!evidence.ok) return evidence;
   track.start('synthesis');
@@ -222,23 +260,24 @@ function status(env) {
     model_default: MODEL_DEFAULT,
     mode: 'read_only_mcp_tool_auditor',
     endpoint_allowlist: ['*.workers.dev', 'agentfeedoptimization.com', '*.agentfeedoptimization.com'],
-    bindings: { AI: !!env.AI, WORKER_NAME: !!env.WORKER_NAME },
+    internal_targets: Object.keys(internalTargets()).filter(k => k.includes('-')),
+    bindings: { AI: !!env.AI, WORKER_NAME: !!env.WORKER_NAME, REPO_INVESTIGATOR: !!env.REPO_INVESTIGATOR, WORKER_INVESTIGATOR: !!env.WORKER_INVESTIGATOR, D1_INVESTIGATOR: !!env.D1_INVESTIGATOR },
     tools: ['subagent_status', 'fetch_mcp_tools', 'audit_tool_schema', 'audit_tool_list', 'audit_mcp_endpoint', 'investigate_mcp_tool']
   };
 }
 
 const toolSchemas = [
   { name: 'subagent_status', description: 'Health check: MCP tool auditor status, model, allowlist, and available tools.', inputSchema: { type: 'object', properties: {}, required: [] } },
-  { name: 'fetch_mcp_tools', description: 'Read-only fetch of tools/list from an allowed MCP endpoint URL. Default allowlist is workers.dev and agentfeedoptimization.com.', inputSchema: { type: 'object', properties: { endpoint_url: { type: 'string' }, url: { type: 'string' } }, required: [] } },
+  { name: 'fetch_mcp_tools', description: 'Read-only fetch of tools/list from an allowed MCP endpoint URL or first-wave service binding target. Default public allowlist is workers.dev and agentfeedoptimization.com.', inputSchema: { type: 'object', properties: { endpoint_url: { type: 'string' }, url: { type: 'string' }, tools_url: { type: 'string' }, target_worker: { type: 'string' }, binding_name: { type: 'string' } }, required: [] } },
   { name: 'audit_tool_schema', description: 'Audit one MCP tool schema for name quality, description clarity, inputSchema shape, risk wording, and mobile agent usability.', inputSchema: { type: 'object', properties: { tool: { type: 'object' } }, required: [] } },
   { name: 'audit_tool_list', description: 'Audit a provided list of MCP tool schemas and return scores, grades, risky tools, one-call tools, and issue summaries.', inputSchema: { type: 'object', properties: { tools: { type: 'array', items: { type: 'object' } } }, required: ['tools'] } },
-  { name: 'audit_mcp_endpoint', description: 'Fetch tools from an allowed MCP endpoint and audit the entire tool surface. Read-only and does not call individual tools.', inputSchema: { type: 'object', properties: { endpoint_url: { type: 'string' }, url: { type: 'string' } }, required: [] } },
-  { name: 'investigate_mcp_tool', description: 'ONE-CALL MCP tool surface investigation: fetch/provided tools -> audit names/descriptions/schemas/safety wording -> AI synthesis with evidence and timings.', inputSchema: { type: 'object', properties: { endpoint_url: { type: 'string' }, url: { type: 'string' }, tools: { type: 'array', items: { type: 'object' } }, question: { type: 'string' }, include_raw: { type: 'boolean' } }, required: [] } }
+  { name: 'audit_mcp_endpoint', description: 'Fetch tools from an allowed MCP endpoint or first-wave service binding target and audit the entire tool surface. Read-only and does not call individual tools.', inputSchema: { type: 'object', properties: { endpoint_url: { type: 'string' }, url: { type: 'string' }, tools_url: { type: 'string' }, target_worker: { type: 'string' }, binding_name: { type: 'string' } }, required: [] } },
+  { name: 'investigate_mcp_tool', description: 'ONE-CALL MCP tool surface investigation: fetch/provided tools or service-binding target -> audit names/descriptions/schemas/safety wording -> AI synthesis with evidence and timings.', inputSchema: { type: 'object', properties: { endpoint_url: { type: 'string' }, url: { type: 'string' }, tools_url: { type: 'string' }, target_worker: { type: 'string' }, binding_name: { type: 'string' }, tools: { type: 'array', items: { type: 'object' } }, question: { type: 'string' }, include_raw: { type: 'boolean' } }, required: [] } }
 ];
 
 async function callTool(env, name, args) {
   if (name === 'subagent_status') return status(env);
-  if (name === 'fetch_mcp_tools') return fetchMcpTools(args || {});
+  if (name === 'fetch_mcp_tools') return fetchMcpTools(env, args || {});
   if (name === 'audit_tool_schema') return auditToolSchema(env, args || {});
   if (name === 'audit_tool_list') return auditToolList(env, args || {});
   if (name === 'audit_mcp_endpoint') return auditMcpEndpoint(env, args || {});
