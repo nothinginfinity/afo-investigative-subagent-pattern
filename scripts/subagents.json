@@ -19,7 +19,7 @@
       "id": "worker-investigator",
       "worker_name": "afo-worker-investigator-mcp",
       "path": "subagents/worker-investigator",
-      "status": "planned",
+      "status": "deployable",
       "primary_tool": "investigate_worker"
     },
     {
