@@ -1,4 +1,4 @@
-# afo-subagent-mcp — v0.1.0
+# afo-investigative-subagent-pattern — v0.1.0
 
 A **subagent worker**: answers questions about any GitHub repo by reading it
 entirely server-side and running Workers AI (`@cf/zai-org/glm-4.7-flash` by
@@ -6,7 +6,7 @@ default) over the contents. The MCP caller only pays tokens for the compact,
 cited answer — never for the file contents.
 
 Connect as a no-auth MCP (Claude, ChatGPT):
-`https://afo-subagent-mcp.jaredtechfit.workers.dev/mcp`
+`https://afo-investigative-subagent-pattern.jaredtechfit.workers.dev/mcp`
 
 ## Tools
 - `subagent_status` — bindings, model, limits.
