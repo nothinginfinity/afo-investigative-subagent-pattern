@@ -17,12 +17,12 @@ This keeps development simple while avoiding one giant Worker with too many tool
 | `repo-investigator` | `afo-repo-investigator-mcp` | deployed/reference clone | GitHub repo investigation using the proven v0.5.0 pipeline |
 | `worker-investigator` | `afo-worker-investigator-mcp` | deployed | Cloudflare Worker settings, bindings, workers.dev status, and version investigation |
 | `d1-investigator` | `afo-d1-investigator-mcp` | deployed | Read-only D1 database schema, table, sample, and query investigation |
+| `mcp-tool-auditor` | `afo-mcp-tool-auditor` | deployable | Read-only MCP tool-surface audit for agent usability, schema clarity, and safety wording |
 
 ## Planned first wave
 
 | Folder | Worker name | Purpose |
 |---|---|---|
-| `mcp-tool-auditor` | `afo-mcp-tool-auditor` | audit MCP tool descriptions, schemas, behavior, and agent usability |
 | `deploy-receipt-investigator` | `afo-deploy-receipt-investigator-mcp` | inspect receipts, deployment history, and drift |
 | `cairnstone-chain-investigator` | `afo-cairnstone-chain-investigator-mcp` | inspect chains, stones, HEAD state, and handoffs |
 
