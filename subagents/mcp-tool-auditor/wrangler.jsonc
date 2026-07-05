@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "afo-mcp-tool-auditor",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-05",
+  "workers_dev": true,
+  "vars": {
+    "WORKER_NAME": "afo-mcp-tool-auditor"
+  },
+  "ai": {
+    "binding": "AI"
+  }
+}
