@@ -1,55 +1,36 @@
 # Route / DNS Investigator
 
-Read-only MCP subagent for Cloudflare routing, DNS, custom domain, and workers.dev investigation.
+Read-only Cloudflare routing investigator for AFO Workers.
 
-## Worker
+Version: 0.1.1
 
-`afo-route-dns-investigator-mcp`
+v0.1.1 adds account-wide zone discovery and account-wide Worker route scanning by default.
 
-## Purpose
+Tools:
 
-Live endpoint problems often look like Worker bugs but are actually route, DNS, or domain issues. This subagent separates routing/domain evidence from Worker code evidence.
+- subagent_status
+- list_account_zones
+- resolve_zone
+- list_dns_records
+- list_worker_routes
+- list_custom_domains
+- get_workers_dev_url
+- smoke_endpoint
+- analyze_route_conflicts
+- investigate_route_dns
 
-It checks:
+Important behavior:
 
-- Cloudflare zone resolution
-- DNS records for a hostname
-- Worker routes in a zone
-- custom domains attached to Workers
-- workers.dev fallback URL and subdomain status
-- route conflicts where the most specific route points to another Worker
-- custom domain conflicts where a hostname points to another Worker
-- DNS proxy status and suspicious CNAME targets
-- smoke-test behavior to see whether the endpoint appears to hit the intended Worker
+- jaredtechfit.workers.dev is a workers.dev account subdomain, not a DNS zone.
+- agentfeedoptimization.com is the recommended default custom-domain zone.
+- When no zone is supplied, route scans now look across visible account zones by default.
+- For workers.dev URLs, pass the full URL and script_name.
+- For custom domains, pass the hostname or URL and the intended script_name.
 
-## Tools
+Recommended runtime values:
 
-- `subagent_status`
-- `resolve_zone`
-- `list_dns_records`
-- `list_worker_routes`
-- `list_custom_domains`
-- `get_workers_dev_url`
-- `smoke_endpoint`
-- `analyze_route_conflicts`
-- `investigate_route_dns`
+- ACCOUNT_SUBDOMAIN = jaredtechfit
+- DEFAULT_ZONE_NAME = agentfeedoptimization.com
+- DEFAULT_SCAN_ALL_ZONES = true
 
-## Runtime credentials
-
-Live Cloudflare inspection requires a read-only Cloudflare API credential exposed to the Worker as one of:
-
-- `CLOUDFLARE_API_TOKEN`
-- `CF_API_TOKEN`
-- `CLOUDFLARE_TOKEN`
-
-Also provide the account id either as a Worker variable or per tool call:
-
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CF_ACCOUNT_ID`
-- `ACCOUNT_ID`
-
-Zone-scoped checks need either `zone_id`, `zone_name`, `domain`, `CF_ZONE_ID`, `DEFAULT_ZONE_ID`, or `DEFAULT_ZONE_NAME`.
-
-## Safety boundary
-
-This Worker only performs Cloudflare GET requests and HTTP smoke checks. It does not create, update, delete, deploy, rerun, mutate DNS, mutate routes, or alter traffic.
+The Cloudflare credential attached to the Worker must have read access for zones, DNS records, Worker routes, Worker custom domains, and Worker script/subdomain metadata. No mutation tools are implemented.
