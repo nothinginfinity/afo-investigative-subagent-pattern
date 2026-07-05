@@ -1,4 +1,4 @@
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 const WORKER = 'afo-mcp-tool-auditor';
 const MODEL_DEFAULT = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 
@@ -98,7 +98,7 @@ function internalTargets() {
 }
 
 function resolveInternalTarget(args) {
-  const raw = clean(args.target_worker || args.binding_name || args.target);
+  const raw = clean(args.target_worker || args.binding_name || args.target || args.endpoint_url || args.url);
   if (!raw) return null;
   const targets = internalTargets();
   const normalized = raw.toLowerCase().replace(/\s+/g, '-');
