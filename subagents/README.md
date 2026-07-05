@@ -14,13 +14,13 @@ This keeps development simple while avoiding one giant Worker with too many tool
 
 | Folder | Worker name | Status | Purpose |
 |---|---|---|---|
-| `repo-investigator` | `afo-repo-investigator-mcp` | reference clone | GitHub repo investigation using the proven v0.5.0 pipeline |
+| `repo-investigator` | `afo-repo-investigator-mcp` | deployed/reference clone | GitHub repo investigation using the proven v0.5.0 pipeline |
+| `worker-investigator` | `afo-worker-investigator-mcp` | deployable | Cloudflare Worker settings, bindings, workers.dev status, and version investigation |
 
 ## Planned first wave
 
 | Folder | Worker name | Purpose |
 |---|---|---|
-| `worker-investigator` | `afo-worker-investigator-mcp` | inspect Cloudflare Workers, bindings, source, routes, and deploy failures |
 | `d1-investigator` | `afo-d1-investigator-mcp` | inspect D1 databases, schema, indexes, and sample rows |
 | `mcp-tool-auditor` | `afo-mcp-tool-auditor` | audit MCP tool descriptions, schemas, behavior, and agent usability |
 | `deploy-receipt-investigator` | `afo-deploy-receipt-investigator-mcp` | inspect receipts, deployment history, and drift |
