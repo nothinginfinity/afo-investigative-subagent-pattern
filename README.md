@@ -1,29 +1,38 @@
-# afo-subagent-mcp — v0.1.0
+# AFO Investigative Sub-Agent Pattern
 
-A **subagent worker**: answers questions about any GitHub repo by reading it
-entirely server-side and running Workers AI (`@cf/zai-org/glm-4.7-flash` by
-default) over the contents. The MCP caller only pays tokens for the compact,
-cited answer — never for the file contents.
+Reusable MCP template for building AFO sub-agents that answer from gathered context instead of guessing.
 
-Connect as a no-auth MCP (Claude, ChatGPT):
-`https://afo-subagent-mcp.jaredtechfit.workers.dev/mcp`
+This repo was cloned from `nothinginfinity/afo-subagent-mcp` and keeps the working repo-reader implementation as the first reference pattern.
 
-## Tools
-- `subagent_status` — bindings, model, limits.
-- `list_repo_files(repo, ref?, filter?)` — cheap tree listing, no LLM.
-- `ask_repo(repo, question, ref?, include?, exclude?, max_files?, model?)`
-  — selects the most relevant files (path/keyword heuristic), reads up to
-  25 files / ~180KB server-side, answers concisely with file-path citations,
-  and reports exactly what it read.
-- `ask_files(repo, question, paths[], ...)` — same, but over explicit paths.
+## Pattern
 
-## Bindings
-- `AI` (Workers AI) — required for ask_* tools.
-- `GITHUB_TOKEN` (secret) — optional; without it only public repos work.
-  Status endpoint reports this visibly.
-- `DEFAULT_OWNER`, `WORKER_NAME` — plain text.
+```text
+question -> probes -> plan -> search -> evidence windows -> selected context -> synthesis -> audit trail
+```
 
-## Design rules (the subagent pattern)
-Return summaries + pointers, never payloads. Heavy reading and model calls
-happen inside the worker; responses stay a few hundred tokens. For deep
-persistence, pair with CairnStone: stone the answer if it's worth keeping.
+## Reference tools in this clone
+
+- `subagent_status`
+- `list_repo_files`
+- `grep_repo_plan`
+- `grep_repo`
+- `read_file_range`
+- `ask_repo_light`
+- `ask_files`
+- `ask_repo`
+- `investigate_repo`
+
+## How to clone this for a new sub-agent
+
+Keep the same internal flow, then swap the domain layer.
+
+Examples:
+
+- repo files become Worker source, D1 tables, R2 objects, CairnStone chain records, messages, receipts, or site artifacts
+- grep becomes the domain search method
+- file ranges become source ranges, SQL rows, object metadata, event slices, or chain stone expansions
+- `investigate_repo` becomes `investigate_worker`, `investigate_database`, `investigate_chain`, or another domain-specific investigation tool
+
+## Build guide
+
+See `docs/PATTERN.md` for the full template contract and clone checklist.
