@@ -66,17 +66,47 @@ async function postRpc(endpoint, method, params, id) {
   return data.result || data;
 }
 
+async function getJson(url) {
+  const res = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json' } });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  if (!res.ok) throw new Error('GET endpoint returned HTTP ' + res.status + ': ' + text.slice(0, 240));
+  return data;
+}
+
+function toolsUrlFromEndpoint(endpoint) {
+  const u = new URL(endpoint);
+  u.pathname = '/tools';
+  u.search = '';
+  u.hash = '';
+  return u.toString();
+}
+
 async function fetchMcpTools(args) {
   const endpoint = clean(args.endpoint_url || args.url);
   const safe = isSafeEndpoint(endpoint);
   if (!safe.ok) return { ok: false, ...safe };
   const track = stageTracker();
+  let init = null;
+  let listed = null;
+  let source = 'mcp_tools_list';
   track.start('initialize');
-  const init = await postRpc(safe.url, 'initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: WORKER, version: VERSION } }, 1).catch(e => ({ error: String(e.message || e) }));
+  init = await postRpc(safe.url, 'initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: WORKER, version: VERSION } }, 1).catch(e => ({ error: String(e.message || e) }));
   track.start('tools_list');
-  const listed = await postRpc(safe.url, 'tools/list', {}, 2);
+  try {
+    listed = await postRpc(safe.url, 'tools/list', {}, 2);
+  } catch (e) {
+    const fallbackUrl = clean(args.tools_url) || toolsUrlFromEndpoint(safe.url);
+    const fallbackSafe = isSafeEndpoint(fallbackUrl);
+    if (!fallbackSafe.ok) return { ok: false, error: String(e.message || e), fallback_error: fallbackSafe.error };
+    track.start('tools_fallback');
+    const fallback = await getJson(fallbackSafe.url);
+    source = 'http_tools_fallback';
+    listed = { tools: arr(fallback.tools) };
+  }
   const tools = arr(listed.tools);
-  return { ok: true, endpoint_url: safe.url, host: safe.host, initialize: init, count: tools.length, tools, timings: track.finish() };
+  return { ok: true, endpoint_url: safe.url, host: safe.host, source, initialize: init, count: tools.length, tools, timings: track.finish() };
 }
 
 function schemaProps(schema) {
@@ -91,7 +121,7 @@ function hasObjectInput(schema) {
 
 function riskVerb(name, desc) {
   const text = (String(name || '') + ' ' + String(desc || '')).toLowerCase();
-  const verbs = ['send', 'deploy', 'write', 'update', 'create', 'archive', 'trash', 'modify', 'apply', 'execute', 'forward', 'label', 'move'];
+  const verbs = ['send', 'deploy', 'write', 'update', 'create', 'archive', 'trash', 'delete', 'remove', 'purge', 'destroy', 'modify', 'apply', 'execute', 'forward', 'label', 'move'];
   return verbs.filter(v => text.includes(v));
 }
 
