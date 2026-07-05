@@ -9,5 +9,19 @@
   },
   "ai": {
     "binding": "AI"
-  }
+  },
+  "services": [
+    {
+      "binding": "REPO_INVESTIGATOR",
+      "service": "afo-repo-investigator-mcp"
+    },
+    {
+      "binding": "WORKER_INVESTIGATOR",
+      "service": "afo-worker-investigator-mcp"
+    },
+    {
+      "binding": "D1_INVESTIGATOR",
+      "service": "afo-d1-investigator-mcp"
+    }
+  ]
 }
